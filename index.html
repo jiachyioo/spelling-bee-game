@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>英文拼字練習</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        /* --- 基礎設置 --- */
+        body {
+            font-family: 'Inter', 'Microsoft JhengHei', 'Arial', sans-serif;
+            background-color: #E1F5FE;
+            color: #1A237E;
+            padding: 10px;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 98%;
+            max-width: 900px;
+            margin: 10px auto;
+            background-color: #FFFFFF;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            position: relative;
+            z-index: 10;
+            padding-bottom: 40px; /* 預留底部空間 */
+        }
+
+        /* 煙火特效畫布 */
+        #fireworks-canvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 9999;
+        }
+
+        /* 標題與控制項 */
+        .header { text-align: center; margin-bottom: 20px; }
+        h1 { font-size: 2.5rem; color: #4CAF50; margin-bottom: 5px; }
+
+        .controls {
+            display: flex; flex-wrap: wrap; gap: 10px;
+            justify-content: center; align-items: center;
+            margin-bottom: 20px; padding: 10px;
+            border: 2px dashed #BBDEFB; border-radius: 15px;
+        }
+
+        /* 按鈕樣式 */
+        .app-button {
+            font-weight: bold; color: #1A237E; background-color: #FFC107;
+            border: none; box-shadow: 0 4px #FFA000; padding: 8px 15px;
+            border-radius: 10px; cursor: pointer; transition: all 0.2s;
+            font-size: 1rem; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
+        .app-button:hover { background-color: #FFEB3B; transform: translateY(-1px); }
+        .app-button:active { box-shadow: 0 2px #FFA000; transform: translateY(1px); }
+        .app-button:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; transform: none; }
+
+        .download-btn { background-color: #4CAF50; color: white; box-shadow: 0 4px #2E7D32; }
+        .download-btn:hover { background-color: #66BB6A; }
+        .download-btn:active { box-shadow: 0 2px #2E7D32; }
+
+        /* --- 模式切換 Tabs (3個) --- */
+        .tabs { display: flex; justify-content: space-around; margin-bottom: 20px; border-bottom: 4px solid #BBDEFB; }
+        .tab-button {
+            flex-grow: 1; padding: 15px 5px; font-size: 1.1rem; font-weight: bold;
+            color: #64B5F6; background: none; border: none; border-radius: 10px 10px 0 0;
+            cursor: pointer; transition: color 0.3s, background-color 0.3s;
+        }
+        .tab-button.active {
+            color: #1A237E; background-color: #BBDEFB; border-bottom: 4px solid #2196F3;
+        }
+
+        /* 內容區塊 */
+        .learning-area {
+            min-height: 400px; /* 稍微加高以適應圖卡 */
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            text-align: center; padding: 10px 0;
+        }
+        
+        .loading-message { font-size: 1.5rem; color: #FF9800; padding: 30px; }
+        
+        /* --- 模式 A: 列表樣式 --- */
+        .word-table-container {
+            width: 100%; max-height: 400px; overflow-y: auto; overflow-x: auto;
+            border: 1px solid #BBDEFB; border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        .word-table-container table { width: 100%; min-width: 600px; border-collapse: collapse; }
+        .word-table-container th, .word-table-container td {
+            padding: 12px; border-bottom: 1px solid #E3F2FD; text-align: left;
+        }
+        .word-table-container tr:last-child td { border-bottom: none; }
+        .word-table-container tr:hover { background-color: #F5F5F5; }
+
+        /* --- 模式 B: 圖卡樣式 --- */
+        .flashcard-container {
+            width: 100%; max-width: 500px; height: 450px;
+            perspective: 1000px; position: relative;
+        }
+        .flashcard {
+            width: 100%; height: 100%;
+            background: #fff; border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border: 2px solid #E3F2FD;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 20px; box-sizing: border-box;
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+            user-select: none; -webkit-user-select: none;
+        }
+        .flashcard-emoji { font-size: 6rem; margin-bottom: 10px; line-height: 1; }
+        .flashcard-word { font-size: 3rem; font-weight: 900; color: #1565C0; margin: 10px 0; }
+        .flashcard-syllables { color: #90CAF9; font-size: 1.2rem; margin-bottom: 15px; }
+        .flashcard-meaning { 
+            font-size: 1.5rem; font-weight: bold; color: #424242; 
+            background: #FFF9C4; padding: 5px 15px; border-radius: 20px; margin-bottom: 15px;
+        }
+        .flashcard-sentence { 
+            font-size: 1.1rem; color: #616161; font-style: italic; 
+            background: #F5F5F5; padding: 15px; border-radius: 10px; width: 100%;
+        }
+        
+        .flashcard-nav {
+            display: flex; justify-content: space-between; width: 100%; max-width: 500px; margin-top: 20px;
+        }
+        
+        /* --- 模式 C: 拼字練習樣式 --- */
+        .target-word-display {
+            min-height: 50px; 
+            border: 3px dashed #BBDEFB; border-radius: 15px; padding: 10px;
+            margin-bottom: 20px; display: flex; gap: 5px; justify-content: center;
+            align-items: center; font-size: 2.5rem; font-weight: bold; background-color: #F5F5F5;
+            cursor: pointer;
+        }
+        .target-word-display:hover { background-color: #E3F2FD; }
+        .target-word-display span { 
+            display: inline-block; min-width: 25px; text-align: center; font-size: 1.5rem; white-space: pre;
+        }
+        .cloze-sentence {
+            font-size: 1.2rem; color: #555; background-color: #E8F5E9; padding: 10px;
+            border-radius: 8px; margin: 10px 0; border: 1px dashed #4CAF50; font-style: italic;
+        }
+        .letter-blocks { 
+            display: flex; flex-direction: column; align-items: center; gap: 8px; 
+            max-width: 800px; margin: 0 auto; 
+        }
+        .keyboard-row { display: flex; justify-content: center; gap: 8px; }
+        .letter-block {
+            font-size: 1.8rem; width: 60px; height: 65px;
+            display: flex; justify-content: center; align-items: center; border-radius: 8px;
+            background-color: #FFF9C4; color: #1A237E; font-weight: bold; border: none;
+            box-shadow: 0 4px #FBC02D; transition: all 0.1s; text-transform: lowercase;
+        }
+        .letter-block:active { transform: translateY(2px); box-shadow: 0 2px #FBC02D; }
+        .letter-block.del-key {
+            background-color: #FFCDD2; color: #C62828; box-shadow: 0 4px #E57373; width: 75px; font-size: 1.4rem; text-transform: none;
+        }
+        .letter-block.del-key:active { box-shadow: 0 2px #E57373; }
+        .letter-block.space-key { width: 200px; font-size: 1.2rem; text-transform: none; }
+        .letter-block.space-key:active { box-shadow: 0 2px #FBC02D; }
+
+        .stats-bar {
+            display: flex; justify-content: space-between; width: 100%;
+            background-color: #E1F5FE; padding: 8px 15px; border-radius: 10px;
+            margin-bottom: 15px; color: #0277BD; font-weight: bold;
+            box-sizing: border-box; border: 1px solid #B3E5FC;
+        }
+        .quiz-controls {
+            display: flex; justify-content: center; width: 90%; max-width: 600px; margin-top: 30px; gap: 20px;
+        }
+        .quiz-controls .app-button { font-size: 1.1rem; padding: 12px 30px; min-width: 150px; }
+        .speak-quiz-btn { background-color: #64B5F6; color: white; box-shadow: 0 4px #42A5F5; }
+        .speak-quiz-btn:hover { background-color: #90CAF9; }
+        .speak-quiz-btn:active { box-shadow: 0 2px #42A5F5; }
+
+        /* 提示樣式 */
+        .result-message { margin-top: 20px; font-size: 1.5rem; font-weight: bold; min-height: 30px; }
+        .success { color: #4CAF50; }
+        .error { color: #F44336; }
+
+        /* 讀取遮罩 */
+        #loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.9); z-index: 9999;
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .spinner {
+            border: 8px solid #f3f3f3; border-top: 8px solid #3498db;
+            border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Modal */
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.7); display: none; align-items: center; justify-content: center; z-index: 100;
+        }
+        .modal-content {
+            background-color: #FFFFFF; padding: 20px; border-radius: 15px; max-width: 600px; width: 95%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3); text-align: center;
+            max-height: 90vh; display: flex; flex-direction: column;
+        }
+        .result-summary div { padding: 10px 0; border-bottom: 1px dashed #BBDEFB; }
+        .result-summary div:last-child { border-bottom: none; }
+        .result-list-item {
+            display: flex; flex-direction: column; padding: 10px; margin-bottom: 8px;
+            border-radius: 8px; text-align: left; border: 1px solid #eee;
+        }
+        .result-list-item.wrong { background-color: #FFEBEE; border-color: #FFCDD2; }
+        .result-list-item.correct { background-color: #E8F5E9; border-color: #C8E6C9; }
+        .result-header { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+        .result-word { font-size: 1.2rem; font-weight: bold; color: #1A237E; }
+        .result-icon { font-size: 1.2rem; }
+        .result-details { font-size: 0.95rem; color: #555; padding-left: 28px; }
+        .result-example { font-size: 0.85rem; color: #666; margin-top: 3px; font-style: italic; }
+
+        /* RWD */
+        @media (max-width: 600px) {
+            h1 { font-size: 2rem; }
+            .tab-button { font-size: 1rem; padding: 10px 2px; }
+            .letter-block { width: 34px; height: 42px; font-size: 1.2rem; }
+            .letter-block.del-key { width: 50px; font-size: 1rem; }
+            .letter-block.space-key { width: 150px; }
+            .keyboard-row { gap: 4px; }
+            .quiz-controls { flex-direction: column; }
+            .quiz-controls .app-button { width: 100%; }
+            .flashcard-container { height: 400px; }
+            .flashcard-emoji { font-size: 5rem; }
+            .flashcard-word { font-size: 2.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- 煙火畫布 -->
+<canvas id="fireworks-canvas"></canvas>
+
+<!-- 讀取遮罩 -->
+<div id="loading-overlay">
+    <div class="spinner"></div>
+    <p style="margin-top: 20px; font-size: 1.2rem; font-weight: bold; color: #555;">正在生成圖片，請稍候...</p>
+</div>
+
+<div class="container">
+    <div class="header">
+        <h1>英文拼字練習</h1>
+        <p>上傳照片，讓 AI 幫您整理單字表！</p>
+    </div>
+
+    <div class="controls">
+        <button class="app-button" id="upload-button" onclick="document.getElementById('file-input').click()">
+            上傳照片，建立新單字表
+        </button>
+        <input type="file" id="file-input" style="display: none;" accept="image/*" onchange="handleFileUpload(event)">
+    </div>
+
+    <!-- 模式切換 Tabs (3個) -->
+    <div class="tabs">
+        <button id="tab-A" class="tab-button active" onclick="setMode('list')">生成列表</button>
+        <button id="tab-C" class="tab-button" onclick="setMode('flashcard')" disabled>單字圖卡</button>
+        <button id="tab-B" class="tab-button" onclick="setMode('block')" disabled>拼字練習</button>
+    </div>
+
+    <!-- 主學習內容區 -->
+    <div class="learning-area">
+        <div id="mode-content" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+            
+            <!-- 載入狀態 -->
+            <div id="loading-view" class="loading-message" style="display: none;">
+                <p>🚀 AI 正在分析照片並生成單字表，請稍候...</p>
+                <img src="https://placehold.co/80x80/FFC107/000?text=AI" alt="Loading Indicator" style="border-radius: 50%;">
+            </div>
+
+            <!-- Tab A: 列表模式 -->
+            <div id="list-view" style="display: block; width: 100%;">
+                <div id="vocab-download-area" style="display: none; width: 100%; text-align: right; margin-bottom: 10px;">
+                     <button class="app-button download-btn" onclick="downloadVocabList()">📥 下載單字表 (圖片)</button>
+                </div>
+                <div id="word-list-container" class="word-table-container">
+                    <p style="padding: 20px; font-size: 1.5rem; color: #2196F3; text-align: center;">請點擊「上傳照片」來建立您的第一個單字表！</p>
+                </div>
+            </div>
+
+            <!-- Tab C: 圖卡模式 -->
+            <div id="flashcard-view" style="display: none; width: 100%; display: flex; flex-direction: column; align-items: center;">
+                <div id="flashcard-container" class="flashcard-container">
+                    <div id="active-flashcard" class="flashcard">
+                        <div class="flashcard-emoji">❓</div>
+                        <div class="flashcard-word">Word</div>
+                        <div class="flashcard-syllables">[ syl-la-bles ]</div>
+                        <div class="flashcard-meaning">中文意思</div>
+                        <div class="flashcard-sentence">Example sentence here.</div>
+                    </div>
+                </div>
+                
+                <div class="flashcard-nav">
+                    <button class="app-button" onclick="prevFlashcard()">⬅️ 上一個</button>
+                    <div style="font-weight: bold; color: #1565C0; display: flex; align-items: center;">
+                        <input type="checkbox" id="auto-play-check" checked style="margin-right: 5px;"> 
+                        <label for="auto-play-check">自動朗讀</label>
+                    </div>
+                    <button class="app-button" onclick="nextFlashcard()">下一個 ➡️</button>
+                </div>
+                <p style="color: #999; margin-top: 10px; font-size: 0.9rem;">(左右滑動圖卡可切換)</p>
+            </div>
+
+            <!-- Tab B: 拼字練習 (測驗) -->
+            <div id="block-view" style="display: none; width: 100%; max-width: 800px;">
+                <div class="stats-bar">
+                    <span id="stats-accuracy">答對: 0 / 0</span>
+                    <span id="progress-B">進度: 0/0</span>
+                    <span id="stats-timer">⏱️ 00:00</span>
+                </div>
+
+                <div style="text-align: center; margin-bottom: 10px;">
+                    <p style="margin: 0; font-size: 1.1rem; font-weight: bold;">中文解釋：<span id="chinese-explanation-B"></span></p>
+                    <div id="block-sentence-display" class="cloze-sentence"></div>
+                </div>
+
+                <div class="block-area" style="width: 100%;">
+                    <p style="font-size: 1rem; color: #666; text-align: center;">點擊鍵盤拼出單字、答對後主動進入下一題：</p>
+                    <div id="target-word-display-B" class="target-word-display" onclick="clearBlockAttempt()" title="點擊這裡清除重來"></div>
+                    <div id="letter-blocks-B" class="letter-blocks"></div>
+                </div>
+                <div id="result-message-B" class="result-message"></div>
+
+                <div class="quiz-controls">
+                    <button class="app-button speak-quiz-btn" onclick="speakCurrentWord()">🔊 點我聽發音</button>
+                    <button class="app-button" onclick="goToNextWord()">輸入鍵 (下一題 ➡️)</button>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- 版本資訊與提示詞按鈕 -->
+    <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 10px; color: #9E9E9E; font-size: 0.8rem; display: flex; justify-content: center; align-items: center; gap: 10px;">
+        <button onclick="showPromptModal()" style="background: none; border: 1px solid #ddd; border-radius: 4px; color: #999; cursor: pointer; padding: 2px 8px; font-size: 0.75rem;">📋 顯示製作提示詞</button>
+        <span>Version 3.2 | Updated: 2026-01-24 10:40</span>
+    </div>
+</div>
+
+<!-- 測驗結果彈窗 -->
+<div id="results-modal" class="modal">
+    <div class="modal-content">
+        <h2 style="font-size: 2rem; color: #1A237E; border-bottom: 3px solid #BBDEFB; padding-bottom: 10px; margin-bottom: 20px;">測驗結果</h2>
+        <div id="results-capture-area" style="width: 100%; background-color: #fff; padding: 10px; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; flex-grow: 1;">
+            <div class="result-summary" style="text-align: left;">
+                <div style="display: flex; justify-content: space-between; font-size: 1.2rem; font-weight: bold;">
+                    <span>答對率</span><span id="final-accuracy" style="color: #4CAF50;">0%</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>總題數</span><span id="final-total-count">0</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>答對題數</span><span id="final-correct-count" style="color: #4CAF50;">0</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>答錯題數</span><span id="final-error-count" style="color: #F44336;">0</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>總耗時</span><span id="final-time-desc" style="color: #FFC107;">0分 0秒</span>
+                </div>
+            </div>
+            <div style="margin-top: 15px; text-align: left; flex-grow: 1; display: flex; flex-direction: column; overflow: hidden;">
+                <h3 style="font-size: 1.2rem; font-weight: bold; color: #1A237E; margin-bottom: 10px;">單字測驗詳情</h3>
+                <div id="error-word-list" style="overflow-y: auto; border: 1px solid #E0E0E0; border-radius: 8px; padding: 5px; flex-grow: 1;"></div>
+            </div>
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+            <button class="app-button download-btn" onclick="downloadQuizResults()">📥 下載結果</button>
+            <button class="app-button" style="background-color: #2196F3; color: white; box-shadow: 0 4px #1565C0;" onclick="resetQuiz()">重新開始</button>
+        </div>
+    </div>
+</div>
+
+<!-- iOS 下載提示 -->
+<div id="ios-download-modal" class="modal">
+    <div class="modal-content" style="max-width: 90%; height: auto; max-height: 90vh; overflow-y: auto;">
+        <h3 style="color: #1A237E; margin-bottom: 10px;">📸 圖片已生成！</h3>
+        <p style="color: #666; font-size: 1rem; margin-bottom: 15px; background: #E3F2FD; padding: 10px; border-radius: 8px;">
+            <span style="font-weight: bold; color: #D32F2F;">iOS 用戶請注意：</span><br>請長按下方圖片，選擇<br>「加入照片」或「儲存影像」
+        </p>
+        <img id="ios-download-img" style="width: 100%; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" alt="Generated Image">
+        <button class="app-button" onclick="document.getElementById('ios-download-modal').style.display='none'">關閉視窗</button>
+    </div>
+</div>
+
+<!-- 提示詞顯示彈窗 -->
+<div id="prompt-modal" class="modal">
+    <div class="modal-content" style="max-width: 800px; text-align: left; max-height: 80vh; overflow-y: auto;">
+        <h3 style="color: #1A237E; border-bottom: 2px solid #BBDEFB; padding-bottom: 10px; margin-bottom: 15px;">🛠️ 開發提示詞 (Prompt)</h3>
+        <p style="color: #666; font-size: 0.9rem; margin-bottom: 10px;">複製下方文字並發送給 AI (如 Gemini)，即可生成此應用程式：</p>
+        <textarea readonly style="width: 100%; height: 350px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; background: #f9f9f9; font-family: monospace; font-size: 0.9rem; resize: vertical; line-height: 1.5; color: #333;">
+請幫我開發一個單一檔案的 HTML Web App，主題是「英文拼字練習 (English Spelling Bee)」。
+
+### 1. 技術規格
+* **檔案格式**：單一 .html 檔案（整合 HTML, CSS, JavaScript）。
+* **外部依賴**：僅允許使用 `html2canvas` (CDN) 用於截圖功能，不使用其他大型框架。
+* **API 模型**：使用 `gemini-2.5-flash-preview-09-2025`。
+* **API Key**：請在 JS 開頭預留 `const API_KEY = "";` 讓使用者自行填寫。
+* **RWD 設計**：必須完美支援 PC、iPad 與 iPhone (防止跑版)。
+
+### 2. 核心流程
+1.  **上傳圖片**：使用者上傳一張含有英文單字的圖片。
+2.  **AI 分析**：呼叫 Gemini API 辨識圖片內容，回傳 JSON 陣列。
+    * 資料結構需包含：`word` (單字), `syllables` (音節拆解), `chinese_explanation` (中文解釋), `emoji` (對應的表情符號), `example_sentences` (1-2句簡單例句)。
+3.  **介面分頁**：需有三個分頁：
+    * **Tab A: 生成列表** (預設)
+    * **Tab B: 單字圖卡** (Flashcards)
+    * **Tab C: 拼字練習** (Quiz)
+
+### 3. 詳細功能需求
+
+#### Tab A: 生成列表 (List Mode)
+* **表格呈現**：列出序號、單字(含Emoji)、中文、例句。表格需支援水平捲動。
+* **單字細節**：點擊列表單字可聽發音 (Web Speech API)。
+* **下載功能**：提供「下載單字表」按鈕，將表格轉為圖片。
+    * **iOS 修正**：若是 iOS 裝置，不可自動下載，需彈出視窗顯示圖片並提示「長按儲存」；PC/Android 則直接下載。
+
+#### Tab B: 單字圖卡 (Flashcard Mode)
+* **介面**：顯示一張大卡片，內容包含 Emoji (超大字體)、英文單字、音節、中文、例句。
+* **互動**：
+    * 支援左右按鈕切換上/下一個單字。
+    * 支援手機「左右滑動手勢」切換。
+* **自動朗讀**：設有一個「自動朗讀」勾選框 (預設開啟)。當切換卡片時，自動依序念出單字與例句。
+
+#### Tab C: 拼字練習 (Quiz Mode)
+* **資訊列**：顯示「答對：X / Y」、「進度：X / Total」與「計時器」。
+* **題目區**：顯示「中文解釋」以及「挖空的英文例句」（將題目單字用底線取代）。
+* **虛擬鍵盤**：
+    * **QWERTY 排列**：包含 26 個小寫字母，加入 `Space` (空白鍵) 與 `Del` (刪除鍵)。鍵盤需包含 `'` (撇號) 與 `-` (連字號) 以支援特殊單字。
+    * **樣式**：按鈕需放大 (約 1.5 倍) 且置中，方便手機操作，顏色設為淺黃色。
+* **互動邏輯**：
+    * **答對時**：
+        1. 播放「勝利音效」 (使用 Web Audio API 合成，不依賴外部檔)。
+        2. 畫面施放「煙火特效」 (Canvas 粒子效果)。
+        3. 延遲 1.2 秒後自動進入下一題 (不需再唸發音)。
+    * **答錯時**：顯示紅色錯誤提示，不自動跳題，允許修改。
+    * **控制按鈕**：下方置中放置「發音 (聽題目)」與「輸入鍵 (下一題)」。
+
+#### 4. 測驗結算與系統功能
+* **成績單**：測驗結束後彈出視窗，顯示答對率、耗時、詳細錯題列表。
+* **下載結果**：需支援成績單截圖下載 (同 iOS 相容邏輯)。
+* **重新開始**：執行「軟重置 (Soft Reset)」，清除分數與進度但保留目前的單字資料，回到 Tab A，**不要**刷新頁面 (以防 API Key 清空或 iOS 異常)。
+* **API 重試**：加入 Exponential Backoff 機制處理 API 錯誤。
+* **視覺風格**：使用淺藍 (#E1F5FE) 與深藍 (#1A237E) 配色，搭配黃色按鈕，呈現活潑教育風格。
+
+請給我完整的 HTML 程式碼。
+        </textarea>
+        <div style="margin-top: 15px; text-align: right;">
+            <button class="app-button" onclick="copyPrompt()">📋 一鍵複製</button>
+            <button class="app-button" style="background-color: #ddd; color: #333; box-shadow: none;" onclick="document.getElementById('prompt-modal').style.display='none'">關閉</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_KEY = ""; 
+    const MODEL_NAME = 'gemini-2.5-flash-preview-09-2025';
+
+    let VOCABULARY = []; 
+    let currentWordIndex = -1; // 列表模式用
+    let flashcardIndex = 0;    // 圖卡模式用
+    let currentWord = null;
+    let currentMode = 'list'; 
+    let isProcessing = false; 
+    
+    // 測驗變數
+    let quizOrder = []; 
+    let quizIndex = 0;
+    let quizStartTime = 0; 
+    let currentWordStart = 0; 
+    let statsTimerInterval = null; 
+    let quizResults = []; 
+    let isTransitioning = false; 
+    let currentBlockAttempt = [];
+
+    const synth = window.speechSynthesis;
+    let selectedVoice = null;
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    // ==========================================================
+    // 音效與視覺系統
+    // ==========================================================
+    function playTypeSound() {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.05);
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.05);
+    }
+
+    function playSuccessSound() {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const now = audioCtx.currentTime;
+        const freqs = [523.25, 659.25, 783.99]; 
+        freqs.forEach((freq, i) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.1, now + 0.05 + i*0.05);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5 + i*0.05);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now + i*0.05);
+            osc.stop(now + 0.6 + i*0.05);
+        });
+    }
+
+    const canvas = document.getElementById('fireworks-canvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+
+    function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function createFirework(x, y) {
+        const particleCount = 60;
+        const colors = ['#FF5252', '#FF4081', '#E040FB', '#7C4DFF', '#536DFE', '#448AFF', '#40C4FF', '#18FFFF', '#64FFDA', '#69F0AE', '#B2FF59', '#EEFF41', '#FFFF00', '#FFD740', '#FFAB40', '#FF6E40'];
+        for (let i = 0; i < particleCount; i++) {
+            const speed = Math.random() * 5 + 2;
+            const angle = Math.random() * Math.PI * 2;
+            particles.push({
+                x: x, y: y,
+                vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                alpha: 1, life: Math.random() * 0.5 + 0.5
+            });
+        }
+    }
+
+    function updateFireworks() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.alpha -= 0.015;
+            if (p.alpha <= 0) particles.splice(i, 1);
+            else {
+                ctx.globalAlpha = p.alpha; ctx.fillStyle = p.color;
+                ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fill();
+            }
+        }
+        if (particles.length > 0) requestAnimationFrame(updateFireworks);
+    }
+
+    function launchFireworks() {
+        const x = window.innerWidth / 2;
+        const y = window.innerHeight / 2 - 100;
+        createFirework(x, y); createFirework(x - 100, y + 50); createFirework(x + 100, y + 50);
+        if (particles.length > 0) requestAnimationFrame(updateFireworks);
+    }
+
+    // ==========================================================
+    // 基礎功能
+    // ==========================================================
+
+    function getBase64Image(dataUrl) { return dataUrl.split(',')[1]; }
+    function showLoading() { document.getElementById('loading-overlay').style.display = 'flex'; }
+    function hideLoading() { document.getElementById('loading-overlay').style.display = 'none'; }
+
+    // 顯示提示詞 Modal
+    function showPromptModal() {
+        document.getElementById('prompt-modal').style.display = 'flex';
+    }
+
+    // 複製提示詞
+    function copyPrompt() {
+        const textarea = document.querySelector('#prompt-modal textarea');
+        textarea.select();
+        textarea.setSelectionRange(0, 99999); // For mobile devices
+        
+        try {
+            document.execCommand('copy');
+            const btn = document.querySelector('#prompt-modal button');
+            const originalText = btn.textContent;
+            btn.textContent = '✅ 已複製！';
+            setTimeout(() => btn.textContent = originalText, 2000);
+        } catch (err) {
+            console.error('複製失敗', err);
+            alert('複製失敗，請手動複製。');
+        }
+    }
+
+    async function fetchWithRetry(url, options, maxRetries = 3) {
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                const response = await fetch(url, options);
+                if (response.status === 429 && attempt < maxRetries - 1) {
+                    const delay = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    continue;
+                }
+                if (!response.ok) throw new Error(`API error: ${response.status}`);
+                return response.json();
+            } catch (error) { if (attempt === maxRetries - 1) throw error; }
+        }
+    }
+
+    function initApp() {
+        findGoogleUSVoice();
+        setMode('list'); 
+        updateTabStates();
+        
+        // 綁定圖卡滑動事件
+        const flashcardContainer = document.getElementById('flashcard-container');
+        let touchStartX = 0;
+        let touchEndX = 0;
+        
+        flashcardContainer.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, false);
+        
+        flashcardContainer.addEventListener('touchend', e => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        }, false);
+        
+        function handleSwipe() {
+            if (touchEndX < touchStartX - 50) nextFlashcard();
+            if (touchEndX > touchStartX + 50) prevFlashcard();
+        }
+    }
+    
+    function findGoogleUSVoice() {
+        if (synth.getVoices().length === 0) { synth.onvoiceschanged = findGoogleUSVoice; return; }
+        const voices = synth.getVoices();
+        selectedVoice = voices.find(v => v.name.includes('Google US English') && v.lang === 'en-US') ||
+                        voices.find(v => v.lang === 'en-US') || voices.find(v => v.lang.startsWith('en'));
+    }
+
+    function updateTabStates() {
+        const disabled = VOCABULARY.length === 0;
+        document.getElementById('tab-B').disabled = disabled;
+        document.getElementById('tab-C').disabled = disabled;
+    }
+
+    function handleFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file || isProcessing) return;
+        document.getElementById('loading-view').style.display = 'block';
+        document.getElementById('list-view').style.display = 'none';
+        document.getElementById('flashcard-view').style.display = 'none';
+        document.getElementById('block-view').style.display = 'none';
+        
+        isProcessing = true;
+        document.getElementById('upload-button').disabled = true;
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const base64Data = getBase64Image(e.target.result);
+            await callGeminiForVocabulary(base64Data, file.type);
+        };
+        reader.readAsDataURL(file);
+    }
+    
+    async function callGeminiForVocabulary(base64Data, mimeType) {
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
+        // 修改提示詞以請求 emoji
+        const systemPrompt = "您是一個專業的教育內容生成器。請從圖片中識別出所有英語單字。請為每個單字提供：音節拆分、簡潔的中文解釋、1個相關的 Emoji 表情符號，以及 1-2 個使用簡單語法和詞彙的英文例句。音節拆分請使用 '-' 連接。";
+        const userQuery = "請根據這張圖片內容，提取所有英文單字，並為每個單字生成結構化學習資料。";
+
+        const payload = {
+            contents: [{ role: "user", parts: [{ text: userQuery }, { inlineData: { mimeType: mimeType, data: base64Data } }] }],
+            systemInstruction: { parts: [{ text: systemPrompt }] },
+            generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: "ARRAY",
+                    items: {
+                        type: "OBJECT",
+                        properties: {
+                            "word": { "type": "STRING" },
+                            "syllables": { "type": "STRING" },
+                            "chinese_explanation": { "type": "STRING" },
+                            "emoji": { "type": "STRING", "description": "A relevant emoji for the word" },
+                            "example_sentences": { "type": "ARRAY", "items": { "type": "STRING" } }
+                        },
+                        required: ["word", "syllables", "chinese_explanation", "emoji", "example_sentences"]
+                    }
+                }
+            }
+        };
+
+        try {
+            const result = await fetchWithRetry(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const jsonString = result.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (jsonString) {
+                const parsedVocab = JSON.parse(jsonString);
+                VOCABULARY = parsedVocab.filter(item => item.word && item.word.trim() !== '');
+                if (VOCABULARY.length > 0) {
+                    quizOrder = Array.from({ length: VOCABULARY.length }, (_, i) => i);
+                    shuffleArray(quizOrder);
+                }
+            }
+        } catch (e) { console.error("API Error:", e); } 
+        finally {
+            document.getElementById('loading-view').style.display = 'none';
+            isProcessing = false;
+            document.getElementById('upload-button').disabled = false;
+            setMode('list');
+            updateTabStates();
+        }
+    }
+
+    // ==========================================================
+    // 模式與視圖切換
+    // ==========================================================
+
+    function setMode(mode) {
+        stopStatsTimer();
+        document.getElementById('list-view').style.display = 'none';
+        document.getElementById('flashcard-view').style.display = 'none';
+        document.getElementById('block-view').style.display = 'none';
+        document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+
+        if (VOCABULARY.length === 0 && mode !== 'list') {
+            setMode('list'); return;
+        }
+
+        if (mode === 'list') {
+            document.getElementById('list-view').style.display = 'block';
+            document.getElementById('tab-A').classList.add('active');
+            renderWordList();
+        } else if (mode === 'flashcard') {
+            document.getElementById('flashcard-view').style.display = 'flex';
+            document.getElementById('tab-C').classList.add('active');
+            flashcardIndex = 0;
+            renderFlashcard();
+        } else if (mode === 'block') {
+            // 重置測驗
+            quizIndex = 0;
+            quizResults = [];
+            quizStartTime = Date.now();
+            document.getElementById('block-view').style.display = 'block';
+            document.getElementById('tab-B').classList.add('active');
+            startStatsTimer();
+            renderQuizBlock();
+        }
+        currentMode = mode;
+    }
+
+    // --- Tab A: 列表模式 ---
+    function renderWordList() {
+        const container = document.getElementById('word-list-container');
+        const downloadArea = document.getElementById('vocab-download-area');
+        
+        if (VOCABULARY.length === 0) {
+            container.innerHTML = '<p style="padding: 20px; font-size: 1.5rem; color: #2196F3; text-align: center;">請點擊「上傳照片」來建立您的第一個單字表！</p>';
+            downloadArea.style.display = 'none';
+            return;
+        }
+        downloadArea.style.display = 'block';
+        
+        const table = document.createElement('table');
+        table.innerHTML = `
+            <thead><tr style="background-color:#BBDEFB;color:#1A237E;"><th class="p-3">#</th><th class="p-3">單字</th><th class="p-3">中文</th><th class="p-3">例句</th></tr></thead>
+            <tbody>
+                ${VOCABULARY.map((item, i) => `
+                    <tr onclick="speakWordText('${item.word}')" style="cursor:pointer;">
+                        <td class="p-3">${i+1}</td>
+                        <td class="p-3 font-bold text-lg text-blue-800">${item.emoji || ''} ${item.word}</td>
+                        <td class="p-3 text-sm">${item.chinese_explanation}</td>
+                        <td class="p-3 text-xs">${item.example_sentences?.[0] || ''}</td>
+                    </tr>`).join('')}
+            </tbody>`;
+        container.innerHTML = '';
+        container.appendChild(table);
+    }
+
+    // --- Tab C: 圖卡模式 ---
+    function renderFlashcard() {
+        if (VOCABULARY.length === 0) return;
+        const item = VOCABULARY[flashcardIndex];
+        const card = document.getElementById('active-flashcard');
+        
+        // 更新內容
+        card.querySelector('.flashcard-emoji').textContent = item.emoji || '📖';
+        card.querySelector('.flashcard-word').textContent = item.word;
+        card.querySelector('.flashcard-syllables').textContent = `[ ${item.syllables} ]`;
+        card.querySelector('.flashcard-meaning').textContent = item.chinese_explanation;
+        card.querySelector('.flashcard-sentence').textContent = item.example_sentences?.[0] || '';
+
+        // 自動朗讀
+        if (document.getElementById('auto-play-check').checked) {
+            // 延遲一點點以確保切換順暢
+            setTimeout(() => {
+                speakWordText(item.word);
+                setTimeout(() => speakWordText(item.example_sentences?.[0] || ''), 1500);
+            }, 500);
+        }
+    }
+
+    function nextFlashcard() {
+        if (flashcardIndex < VOCABULARY.length - 1) {
+            flashcardIndex++;
+            renderFlashcard();
+        }
+    }
+
+    function prevFlashcard() {
+        if (flashcardIndex > 0) {
+            flashcardIndex--;
+            renderFlashcard();
+        }
+    }
+
+    // --- Tab B: 拼字練習 ---
+    function renderQuizBlock() {
+        if (quizIndex >= quizOrder.length) { finishQuiz(); return; }
+        
+        currentWord = VOCABULARY[quizOrder[quizIndex]];
+        currentWordStart = Date.now();
+        currentBlockAttempt = [];
+        isTransitioning = false;
+        
+        document.getElementById('result-message-B').textContent = '';
+        document.getElementById('chinese-explanation-B').textContent = currentWord.chinese_explanation;
+        
+        // 挖空例句
+        const sentence = currentWord.example_sentences?.[0] || '';
+        const regex = new RegExp(currentWord.word, 'gi');
+        const cloze = sentence.replace(regex, `<span style="color:#2196F3;border-bottom:2px solid;">______</span>`);
+        document.getElementById('block-sentence-display').innerHTML = cloze;
+        document.getElementById('block-sentence-display').style.display = sentence ? 'block' : 'none';
+
+        updateProgress('progress-B');
+        renderKeyboard();
+        renderBlockAttempt();
+        setTimeout(() => speakWordText(currentWord.word), 500);
+    }
+
+    function renderKeyboard() {
+        // 更新鍵盤佈局，加入 ' (撇號) 與 - (連字號)
+        const layout = [
+            'qwertyuiop'.split(''),
+            'asdfghjkl'.split(''),
+            "zxcvbnm'-".split('') // 增加 ' 與 -
+        ];
+        const container = document.getElementById('letter-blocks-B');
+        container.innerHTML = '';
+        
+        layout.forEach((row, i) => {
+            const div = document.createElement('div'); div.className = 'keyboard-row';
+            row.forEach(char => {
+                const btn = document.createElement('button');
+                btn.className = 'letter-block app-button';
+                btn.textContent = char;
+                btn.onclick = () => handleBlockClick(char);
+                div.appendChild(btn);
+            });
+            if (i === 2) {
+                const del = document.createElement('button');
+                del.className = 'letter-block app-button del-key';
+                del.textContent = 'Del';
+                del.onclick = handleDeleteClick;
+                div.appendChild(del);
+            }
+            container.appendChild(div);
+        });
+        
+        // 空白鍵列
+        const spaceRow = document.createElement('div'); spaceRow.className = 'keyboard-row';
+        const space = document.createElement('button');
+        space.className = 'letter-block app-button space-key';
+        space.textContent = 'Space';
+        space.onclick = () => handleBlockClick(' ');
+        spaceRow.appendChild(space);
+        container.appendChild(spaceRow);
+    }
+
+    function renderBlockAttempt() {
+        const display = document.getElementById('target-word-display-B');
+        display.innerHTML = '';
+        const len = currentWord.word.length;
+        for (let i = 0; i < currentBlockAttempt.length; i++) {
+            const span = document.createElement('span');
+            span.textContent = currentBlockAttempt[i];
+            display.appendChild(span);
+        }
+        for (let i = currentBlockAttempt.length; i < len; i++) {
+            const span = document.createElement('span'); span.textContent = '_'; display.appendChild(span);
+        }
+    }
+
+    function handleBlockClick(char) {
+        playTypeSound();
+        if (isTransitioning) return;
+        if (currentBlockAttempt.length < currentWord.word.length) {
+            currentBlockAttempt.push(char);
+            renderBlockAttempt();
+            checkAnswer();
+        }
+    }
+
+    function handleDeleteClick() {
+        playTypeSound();
+        if (isTransitioning) return;
+        if (currentBlockAttempt.length > 0) {
+            currentBlockAttempt.pop();
+            renderBlockAttempt();
+            document.getElementById('result-message-B').textContent = '';
+            document.getElementById('result-message-B').className = 'result-message';
+        }
+    }
+    
+    function clearBlockAttempt() {
+        if (isTransitioning) return;
+        currentBlockAttempt = []; renderBlockAttempt();
+        document.getElementById('result-message-B').textContent = '';
+        document.getElementById('result-message-B').className = 'result-message';
+    }
+
+    function checkAnswer() {
+        if (currentBlockAttempt.length === currentWord.word.length) {
+            const attempt = currentBlockAttempt.join('').toLowerCase();
+            if (attempt === currentWord.word.toLowerCase()) {
+                // Correct
+                if (quizResults.length <= quizIndex) {
+                    quizResults.push({ word: currentWord.word, correct: true, timeSpent: 0 });
+                }
+                document.getElementById('result-message-B').className = 'result-message success';
+                document.getElementById('result-message-B').textContent = '恭喜！拼對了！🎉';
+                isTransitioning = true;
+                playSuccessSound();
+                launchFireworks();
+                setTimeout(goToNextWord, 1200);
+            } else {
+                // Incorrect
+                document.getElementById('result-message-B').className = 'result-message error';
+                document.getElementById('result-message-B').textContent = '拼錯了喔！請按 Del 修改或重試。';
+            }
+        }
+    }
+
+    function goToNextWord() {
+        if (quizIndex >= VOCABULARY.length) return;
+        
+        // 若未完成直接跳過
+        if (quizResults.length <= quizIndex) {
+            quizResults.push({ word: currentWord.word, correct: false, timeSpent: 0 });
+        }
+        
+        quizIndex++;
+        renderQuizBlock();
+        updateStatsDisplay();
+    }
+    
+    // --- 通用功能 ---
+    function speakWordText(text) {
+        if (!text || !synth) return;
+        if (synth.speaking) synth.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.voice = selectedVoice;
+        utter.rate = 0.8;
+        synth.speak(utter);
+    }
+    
+    function speakCurrentWord() {
+        if (currentMode === 'block') speakWordText(currentWord.word);
+        else if (currentMode === 'flashcard') speakWordText(VOCABULARY[flashcardIndex].word);
+    }
+
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    }
+
+    function resetQuiz() {
+        document.getElementById('results-modal').style.display = 'none';
+        setMode('list'); // Reset to list view first
+    }
+
+    function updateProgress(id) {
+        if (quizIndex >= VOCABULARY.length) return;
+        document.getElementById(id).textContent = `進度: ${quizIndex+1} / ${VOCABULARY.length}`;
+    }
+    
+    function updateStatsDisplay() {
+        const correct = quizResults.filter(r => r.correct).length;
+        document.getElementById('stats-accuracy').textContent = `答對: ${correct} / ${quizResults.length}`;
+    }
+    
+    function startStatsTimer() {
+        if (statsTimerInterval) clearInterval(statsTimerInterval);
+        statsTimerInterval = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - quizStartTime)/1000);
+            const m = Math.floor(elapsed/60).toString().padStart(2,'0');
+            const s = (elapsed%60).toString().padStart(2,'0');
+            document.getElementById('stats-timer').textContent = `⏱️ ${m}:${s}`;
+        }, 1000);
+    }
+    function stopStatsTimer() { clearInterval(statsTimerInterval); }
+
+    function finishQuiz() {
+        stopStatsTimer();
+        const total = VOCABULARY.length;
+        const correct = quizResults.filter(r => r.correct).length;
+        const elapsed = Math.floor((Date.now() - quizStartTime)/1000);
+        
+        document.getElementById('final-accuracy').textContent = Math.round((correct/total)*100) + '%';
+        document.getElementById('final-total-count').textContent = total;
+        document.getElementById('final-correct-count').textContent = correct;
+        document.getElementById('final-error-count').textContent = total - correct;
+        document.getElementById('final-time-desc').textContent = `${Math.floor(elapsed/60)} 分 ${elapsed%60} 秒`;
+        
+        const list = document.getElementById('error-word-list');
+        list.innerHTML = '';
+        quizResults.forEach(r => {
+            const item = VOCABULARY.find(v => v.word === r.word);
+            const div = document.createElement('div');
+            div.className = r.correct ? 'result-list-item correct' : 'result-list-item wrong';
+            div.innerHTML = `<div class="result-header"><span>${r.correct?'✅':'❌'}</span> <span class="result-word">${r.word}</span></div><div class="result-details">${item.chinese_explanation}</div>`;
+            list.appendChild(div);
+        });
+        
+        document.getElementById('results-modal').style.display = 'flex';
+    }
+
+    // --- 下載與截圖 (iOS 相容) ---
+    function saveCanvas(canvas, name) {
+        const url = canvas.toDataURL("image/png");
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        if (isIOS) {
+            document.getElementById('ios-download-img').src = url;
+            document.getElementById('ios-download-modal').style.display = 'flex';
+        } else {
+            const a = document.createElement('a'); a.download = name; a.href = url; a.click();
+        }
+    }
+
+    function capture(el, name) {
+        showLoading();
+        const clone = document.createElement('div');
+        clone.style.position = 'fixed'; clone.style.left = '0'; clone.style.top = '0'; clone.style.zIndex = '-9999';
+        clone.style.width = '800px'; clone.style.background = '#fff'; clone.style.padding = '20px';
+        clone.innerHTML = el.innerHTML;
+        document.body.appendChild(clone);
+        html2canvas(clone, { scale: 2, backgroundColor: '#fff' }).then(c => {
+            saveCanvas(c, name); document.body.removeChild(clone); hideLoading();
+        }).catch(e => { console.error(e); hideLoading(); });
+    }
+
+    function downloadVocabList() {
+        if (VOCABULARY.length === 0) return;
+        const temp = document.createElement('div');
+        temp.innerHTML = `<h1 style="text-align:center;color:#1A237E;">📚 單字表</h1><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#BBDEFB;"><th style="padding:10px;">單字</th><th style="padding:10px;">解釋</th></tr></thead><tbody>${VOCABULARY.map(v => `<tr><td style="padding:10px;border-bottom:1px solid #eee;">${v.word}</td><td style="padding:10px;border-bottom:1px solid #eee;">${v.chinese_explanation}</td></tr>`).join('')}</tbody></table>`;
+        capture(temp, 'vocab.png');
+    }
+
+    function downloadQuizResults() {
+        const el = document.getElementById('results-capture-area');
+        if (el) capture(el, 'result.png');
+    }
+
+    window.onload = initApp;
+</script>
+</body>
+</html>
